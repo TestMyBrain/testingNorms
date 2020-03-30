@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en-US">
+
+
+<head>
+	<title>TestMyBrain Norms</title>
+	<link rel="shortcut icon" href="https://v3.testmybrain.org/neuro_stage/images/icons/favicon.ico">
+</head>
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
+
+<script>
+
+
+
+//var dropbox_link = 'https://dl.dropboxusercontent.com/s/324v51d781prxll/adult_norms.csv?raw=1';
+var dropbox_link = 'https://dl.dropboxusercontent.com/s/u3nfinr34i397im/TEST_RS_all_norms.csv?raw=1';
+var norm_data = [];
+var norm_final = [];
+var nRow = [];
+var nCol = [];
+var age_column = [];
+var edu_column = [];
+var gender_column = [];
+
+$(document).ready(function() {
+	$.get(dropbox_link, function(data){
+        norm_data = data;
+        
+        //determine number of rows in CSV file
+        nRow = -1;
+        var i = 0;
+		while(i >= 0) {
+     	  i = norm_data.indexOf('\n', i+1);
+     	  nRow++;
+		}
+
+
+        tst = norm_data.indexOf('\n');
+        if (tst == -1){
+			norm_data = norm_data.replace(/\r/g, ",");
+		} else {
+			norm_data = norm_data.replace(/\n/g, ",");
+		}
+		norm_data = norm_data.split(',');
+		
+		
+		//get rid of slashes that R puts into CSV (if necessary)
+		if (norm_data[0].length > 0){
+			for (i = 0; i < norm_data.length; i++){
+				norm_data[i] = norm_data[i].substr(1, norm_data[i].length - 2);
+			}
+		}
+		
+		
+		//find gender, age, and education columns
+		gender_column = norm_data.indexOf('gender')
+		age_column = norm_data.indexOf('age')
+		edu_column = norm_data.indexOf('education')
+		
+		
+		//split norm data into columns (rounding because off by 1 for some reason)
+		nCol = Math.round(norm_data.length/nRow);
+		for (c = 0; c < nCol; c++){
+			norm_final[c] = [];
+		}
+		for (i = nCol; i < norm_data.length; i++){
+			norm_final[i%nCol].push(norm_data[i]);
+		}
+		
+		//get gender options (in order from csv)
+		gender_options = Array.from(new Set(norm_final[gender_column]))
+		for (i = 0; i < gender_options.length; i++){
+			if (gender_options[i].length == 0){
+				gender_options.splice(i,1);
+			}
+		}
+		
+		//get edu options (in order from csv)
+		edu_options = Array.from(new Set(norm_final[edu_column]))
+		for (i = 0; i < edu_options.length; i++){
+			if (edu_options[i].length == 0){
+				edu_options.splice(i,1);
+			}
+		}
+		
+		//get age options (in order from csv)
+		age_options = Array.from(new Set(norm_final[age_column]))
+		for (i = 0; i < age_options.length; i++){
+			if (age_options[i].length == 0){
+				age_options.splice(i,1);
+			}
+		}
+		
+		//add gender, education, and age options as menu items
+		for (i = 0; i < gender_options.length; i++){
+			$('#gender').append(new Option(gender_options[i],gender_options[i]));
+		}
+		for (i = 0; i < edu_options.length; i++){
+			$('#edu').append(new Option(edu_options[i],edu_options[i]));
+		}
+		for (i = 0; i < age_options.length; i++){
+			$('#age').append(new Option(age_options[i],age_options[i]));
+		}
+		
+		getData();
+	});
+});
+
+function getData(){
+	gender = frm.gender.value;
+	age = frm.age.value;
+	edu = frm.edu.value;
+	
+	//check to see if adolescent
+	if (age.length <= 2){
+		adolescent = true;
+		$('#edu').hide();
+		$("label[for='edu']").text("Education level not included for ages 12-20.");
+
+
+	} else {
+		adolescent = false;
+		$('#edu').show();
+		$("label[for='edu']").text("Years of Education:");
+	}
+	
+	
+	//get gender matches
+	var i = 0;
+	gender_match = [];
+	while(i >= 0) {
+     	i = norm_final[gender_column].indexOf(gender, i);
+     	if (i >= 0){
+     		gender_match.push(i);
+     		i++;
+     	}
+	}
+	
+	//get age matches
+	var i = 0;
+	age_match = [];
+	while(i >= 0) {
+     	i = norm_final[age_column].indexOf(age, i);
+     	if (i >= 0){
+     		age_match.push(i);
+     		i++;
+     	}
+	}
+	
+	//get edu matches
+	var i = 0;
+	edu_match = [];
+	while(i >= 0) {
+     	i = norm_final[edu_column].indexOf(edu, i);
+     	if (i >= 0){
+     		edu_match.push(i);
+     		i++;
+     	}
+	}
+	
+	//filter by age and gender
+	all_match = age_match.filter(value => -1 !== gender_match.indexOf(value));
+	
+	//apply education filter if over age 12-20
+	if (!adolescent){
+		all_match = all_match.filter(value => -1 !== edu_match.indexOf(value));
+	}
+	makeTable();
+}
+
+function makeTable(){
+	//create table
+	$("#main_table").html("");
+	$('#main_table').append( '<table>');
+		$('#main_table').append( '<tr>');
+		for (var i = 1; i<nCol; i++){
+			$('#main_table').append('<th>' + norm_data[i] +'</th>');
+		} 
+		$('#main_table').append( '</tr>');
+		
+		for (var r = 0; r < all_match.length; r++){
+			$('#main_table').append( '<tr>')
+				for (var c = 1; c < nCol; c++){
+					if (r%2 == 0){
+						$('#main_table').append( '<td bgcolor="#CFCFCF">' + norm_final[c][all_match[r]] + '</td>')
+					} else {
+						$('#main_table').append( '<td bgcolor="#FFFFFF">' + norm_final[c][all_match[r]] + '</td>')
+					}
+				}
+			$('#main_table').append( '<tr>')
+		}
+		$('#main_table').append(  '</table>' );
+}
+
+</script>
+
+<style>
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+td {
+text-align:center;
+font-size: 12px;
+padding: 4px;
+border: .5px solid #000;
+white-space: nowrap;
+overflow: hidden;
+}
+
+th {
+text-align:center;
+font-size: 12px;
+padding: 4px;
+border: .5px solid #000;
+white-space: nowrap;
+overflow: hidden;
+}
+
+#legend {
+font-size: 14px
+}
+
+#description {
+font-size: 14px
+}
+</style>
+
+<body>
+
+<div id = "instructions">Please select participant characteristics from the dropdown menus:</div>
+<br>
+<div id = "dropdown">
+<div id = "form_div">
+<form id="frm" onsubmit="getData()">
+  <label for="gender">Gender:</label>
+  <select id="gender" name="gender" onchange="getData()"></select>
+  <br><br>
+  <label for="age">Age:</label>
+  <select id="age" name="age" onchange="getData()"></select>
+  <br><br>
+  <label for="edu">Years of Education:</label>
+  <select id="edu" name="edu" onchange="getData()"></select>
+  <br>
+</form></div>
+
+<br>
+<div id = "description">
+Normative data are provided in z-score units, presenting the number of standard deviations from the mean represented by each raw score.<br>
+Where possible, all norms are coded such that higher (or more positive) z scores represent better performance whereas lower (or more negative) z scores represent poorer performance.<br>
+See below table for description of test-specific column headings.</div>
+
+</div>
+
+<br>
+
+<div id ="print"><input type="button" value="Print this page" onClick="window.print()"></div>
+
+<br>
+<div id="main_table"></div>
+<br>
+<div id="legend">
+SRT = Simple Reaction Time scores, or median response time in milliseconds.<br>
+CRT.RT = Choice Reaction Time scores, median response time (correct trials) in milliseconds.<br>
+CRT.ACC = Choice Reaction Time accuracy, or proportion correct responses.<br>
+BDS = Backward digit span scores, or maximum sequence length accurately recalled.<br>
+FDS = Forward Digit Span scores, or maximum sequence length accurately recalled.<br>
+DSM = Digit symbol matching scores, or number of digits and symbols correctly matched in 90 seconds.<br>
+Matrix = Matrix reasoning scores, or proportion correct responses.<br>
+CPT.C = Gradual onset continuous performance test criterion score, based on signal detection theory. Higher scores indicate faster or more impulsive responses.<br>
+CPT.D = Gradual onset continuous performance test discrimination score, based on signal detection theory.  Higher scores indicate more accurate responses (better performance).<br>
+Vis = Visual paired associates memory scores, or proportion correct responses.<br>
+Verbal = Verbal paired associates memory scores, or proportion correct responses.<br>
+TA.total = Trail Making Test - Part A scores, based on total time to complete the trail (in milliseconds).<br>
+TA.errors = Trail Making Test - Part A errors.<br>
+TA.mRT = Trail Making Test - Part A median response time for each correct response.<br>
+TB.total = Trail Making Test - Part B scores, based on total time to complete the trail (in milliseconds).<br>
+TB.errors = Trail Making Test - Part B errors.<br>
+TB.mRT = Trail Making Test - Part B median response time for each correct response. 
+</div>
+</body>
+</html>

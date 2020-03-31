@@ -11,8 +11,8 @@
 
 <script>
 
-//var dropbox_link = 'https://dl.dropboxusercontent.com/s/324v51d781prxll/adult_norms.csv?raw=1';
-var dropbox_link = 'https://dl.dropboxusercontent.com/s/u3nfinr34i397im/TEST_RS_all_norms.csv?raw=1';
+
+var dropbox_link = 'https://dl.dropboxusercontent.com/s/828kreq3ktgz7e8/combined_norms_wDevice.csv?raw=1';
 var norm_data = [];
 var norm_final = [];
 var nRow = [];
@@ -20,6 +20,8 @@ var nCol = [];
 var age_column = [];
 var edu_column = [];
 var gender_column = [];
+var device_column = [];
+var adolescent = [];
 
 $(document).ready(function() {
 	$.get(dropbox_link, function(data){
@@ -55,6 +57,7 @@ $(document).ready(function() {
 		gender_column = norm_data.indexOf('gender')
 		age_column = norm_data.indexOf('age')
 		edu_column = norm_data.indexOf('education')
+		device_column = norm_data.indexOf('device')
 		
 		
 		//split norm data into columns (rounding because off by 1 for some reason)
@@ -89,8 +92,15 @@ $(document).ready(function() {
 				age_options.splice(i,1);
 			}
 		}
+		//get device options (in order from csv)
+		device_options = Array.from(new Set(norm_final[device_column]))
+		for (i = 0; i < device_options.length; i++){
+			if (device_options[i].length == 0){
+				device_options.splice(i,1);
+			}
+		}
 		
-		//add gender, education, and age options as menu items
+		//add gender, education, age, and device options as menu items
 		for (i = 0; i < gender_options.length; i++){
 			$('#gender').append(new Option(gender_options[i],gender_options[i]));
 		}
@@ -100,6 +110,12 @@ $(document).ready(function() {
 		for (i = 0; i < age_options.length; i++){
 			$('#age').append(new Option(age_options[i],age_options[i]));
 		}
+		for (i = 0; i < device_options.length; i++){
+			$('#device').append(new Option(device_options[i],device_options[i]));
+		}
+		
+		//set default menu option to be 21-30...hard coded so need to change this line if major change
+		$("#age").val('21-30');
 		
 		getData();
 	});
@@ -109,6 +125,7 @@ function getData(){
 	gender = frm.gender.value;
 	age = frm.age.value;
 	edu = frm.edu.value;
+	device = frm.device.value;
 	
 	//check to see if adolescent
 	if (age.length <= 2){
@@ -157,8 +174,22 @@ function getData(){
      	}
 	}
 	
+	//get device matches
+	var i = 0;
+	device_match = [];
+	while(i >= 0) {
+     	i = norm_final[device_column].indexOf(device, i);
+     	if (i >= 0){
+     		device_match.push(i);
+     		i++;
+     	}
+	}
+	
 	//filter by age and gender
 	all_match = age_match.filter(value => -1 !== gender_match.indexOf(value));
+	
+	//filter by device
+	all_match = all_match.filter(value => -1 !== device_match.indexOf(value));
 	
 	//apply education filter if over age 12-20
 	if (!adolescent){
@@ -171,19 +202,23 @@ function makeTable(){
 	//create table
 	$("#main_table").html("");
 	$('#main_table').append( '<table>');
-		$('#main_table').append( '<tr>');
+	$('#main_table').append( '<tr>');
 		for (var i = 1; i<nCol; i++){
-			$('#main_table').append('<th>' + norm_data[i] +'</th>');
+			if (!adolescent || i != edu_column){
+				$('#main_table').append('<th>' + norm_data[i] +'</th>');
+			}
 		} 
 		$('#main_table').append( '</tr>');
 		
 		for (var r = 0; r < all_match.length; r++){
 			$('#main_table').append( '<tr>')
 				for (var c = 1; c < nCol; c++){
-					if (r%2 == 0){
-						$('#main_table').append( '<td bgcolor="#CFCFCF">' + norm_final[c][all_match[r]] + '</td>')
-					} else {
-						$('#main_table').append( '<td bgcolor="#FFFFFF">' + norm_final[c][all_match[r]] + '</td>')
+					if (!adolescent || c != edu_column){
+						if (r%2 == 0){
+							$('#main_table').append( '<td bgcolor="#CFCFCF">' + norm_final[c][all_match[r]] + '</td>')
+						} else {
+							$('#main_table').append( '<td bgcolor="#FFFFFF">' + norm_final[c][all_match[r]] + '</td>')
+						}
 					}
 				}
 			$('#main_table').append( '<tr>')
@@ -242,6 +277,9 @@ font-size: 14px
   <br><br>
   <label for="edu">Years of Education:</label>
   <select id="edu" name="edu" onchange="getData()"></select>
+  <br><br>
+  <label for="device">Testing Device:</label>
+  <select id="device" name="device" onchange="getData()"></select>
   <br>
 </form></div>
 
@@ -271,7 +309,7 @@ Matrix = Matrix reasoning scores, or proportion correct responses.<br>
 CPT.C = Gradual onset continuous performance test criterion score, based on signal detection theory. Higher scores indicate faster or more impulsive responses.<br>
 CPT.D = Gradual onset continuous performance test discrimination score, based on signal detection theory.  Higher scores indicate more accurate responses (better performance).<br>
 Vis = Visual paired associates memory scores, or proportion correct responses.<br>
-Verbal = Verbal paired associates memory scores, or proportion correct responses.<br>
+Verb = Verbal paired associates memory scores, or proportion correct responses.<br>
 TA.total = Trail Making Test - Part A scores, based on total time to complete the trail (in milliseconds).<br>
 TA.errors = Trail Making Test - Part A errors.<br>
 TA.mRT = Trail Making Test - Part A median response time for each correct response.<br>

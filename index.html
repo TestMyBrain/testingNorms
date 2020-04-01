@@ -10,9 +10,7 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 
 <script>
-
-
-var dropbox_link = 'https://dl.dropboxusercontent.com/s/828kreq3ktgz7e8/combined_norms_wDevice.csv?raw=1';
+var dropbox_link = 'https://dl.dropboxusercontent.com/s/rci2ggxp59ulehd/all_norms_temp.csv?raw=1';
 var norm_data = [];
 var norm_final = [];
 var nRow = [];
@@ -21,11 +19,17 @@ var age_column = [];
 var edu_column = [];
 var gender_column = [];
 var device_column = [];
+var z_column = [];
 var adolescent = [];
+var part_string = [];
+var cols2show = [];
+var cols2showNames = [];
+var show_all = false;
 
 $(document).ready(function() {
 	$.get(dropbox_link, function(data){
         norm_data = data;
+
         
         //determine number of rows in CSV file
         nRow = -1;
@@ -52,16 +56,17 @@ $(document).ready(function() {
 			}
 		}
 		
-		
 		//find gender, age, and education columns
 		gender_column = norm_data.indexOf('gender')
 		age_column = norm_data.indexOf('age')
 		edu_column = norm_data.indexOf('education')
 		device_column = norm_data.indexOf('device')
+		z_column = norm_data.indexOf('Z')
 		
 		
 		//split norm data into columns (rounding because off by 1 for some reason)
 		nCol = Math.round(norm_data.length/nRow);
+		
 		for (c = 0; c < nCol; c++){
 			norm_final[c] = [];
 		}
@@ -117,6 +122,31 @@ $(document).ready(function() {
 		//set default menu option to be 21-30...hard coded so need to change this line if major change
 		$("#age").val('21-30');
 		
+		//participant specific string
+		var pageURL = window.location.href;
+		if (pageURL.indexOf('?') > -1){
+			part_string = pageURL.substring(pageURL.indexOf("?")+1, pageURL.length);
+			str = '<b>Participant-specific scores:</b><br>';
+			var i = 0;
+			var pos = 0;
+			while(i >= 0) {
+     	  		i = part_string.indexOf('=', i+1);
+     	  		a = part_string.indexOf('&', i+1);
+     	  		if (i >= 0){
+     	  			if (a==-1){
+     	  				a = part_string.length;
+     	  			}
+     	  			var test_name = part_string.substring(pos, i);
+     	  			cols2showNames.push(test_name)
+     	  			str = str + test_name + ' = ' + part_string.substring(i+1,a) + '<br>'
+     	  			pos = a + 1;
+     	  		}
+			}
+			$("#part_scores").html(str + '<br>');
+		} else {
+			$("#show_all").hide();
+		}
+		
 		getData();
 	});
 });
@@ -137,7 +167,7 @@ function getData(){
 	} else {
 		adolescent = false;
 		$('#edu').show();
-		$("label[for='edu']").text("Years of Education:");
+		$("label[for='edu']").html("<b>Years of Education:</b>");
 	}
 	
 	
@@ -200,30 +230,55 @@ function getData(){
 
 function makeTable(){
 	//create table
+	
+	//pick what columns to show, if test-specific data in url
+	if (part_string.length > 0 && !show_all){
+		cols2show = [];
+		cols2show = [gender_column, age_column];
+		if (!adolescent){
+			cols2show.push(edu_column);
+		}
+		cols2show.push(device_column);
+		cols2show.push(z_column);
+		for (i = 0; i < cols2showNames.length; i++){
+			cols2show.push(norm_data.indexOf(cols2showNames[i]));
+		}
+		
+	} else {
+		cols2show = [];
+		for (var i = 1; i < nCol; i++) {
+   			if (i != edu_column || !adolescent){
+   				cols2show.push(i);
+   			}
+		}
+	}
+	
+	
 	$("#main_table").html("");
 	$('#main_table').append( '<table>');
 	$('#main_table').append( '<tr>');
-		for (var i = 1; i<nCol; i++){
-			if (!adolescent || i != edu_column){
-				$('#main_table').append('<th>' + norm_data[i] +'</th>');
-			}
+		for (var c = 0; c < cols2show.length; c++){
+			$('#main_table').append('<th>' + norm_data[cols2show[c]] +'</th>');
 		} 
 		$('#main_table').append( '</tr>');
 		
 		for (var r = 0; r < all_match.length; r++){
 			$('#main_table').append( '<tr>')
-				for (var c = 1; c < nCol; c++){
-					if (!adolescent || c != edu_column){
-						if (r%2 == 0){
-							$('#main_table').append( '<td bgcolor="#CFCFCF">' + norm_final[c][all_match[r]] + '</td>')
-						} else {
-							$('#main_table').append( '<td bgcolor="#FFFFFF">' + norm_final[c][all_match[r]] + '</td>')
-						}
+				for (var c = 0; c < cols2show.length; c++){
+					if (r%2 == 0){
+						$('#main_table').append( '<td bgcolor="#CFCFCF">' + norm_final[cols2show[c]][all_match[r]] + '</td>')
+					} else {
+						$('#main_table').append( '<td bgcolor="#FFFFFF">' + norm_final[cols2show[c]][all_match[r]] + '</td>')
 					}
 				}
 			$('#main_table').append( '<tr>')
 		}
 		$('#main_table').append(  '</table>' );
+}
+
+function showHideNorms(){
+	show_all = !show_all;
+	makeTable();
 }
 
 </script>
@@ -269,31 +324,28 @@ font-size: 14px
 <div id = "dropdown">
 <div id = "form_div">
 <form id="frm" onsubmit="getData()">
-  <label for="gender">Gender:</label>
+  <label for="gender"><b>Gender:</b></label>
   <select id="gender" name="gender" onchange="getData()"></select>
   <br><br>
-  <label for="age">Age:</label>
+  <label for="age"><b>Age:</b></label>
   <select id="age" name="age" onchange="getData()"></select>
   <br><br>
-  <label for="edu">Years of Education:</label>
+  <label for="edu"><b>Years of Education:</b></label>
   <select id="edu" name="edu" onchange="getData()"></select>
   <br><br>
-  <label for="device">Testing Device:</label>
+  <label for="device"><b>Testing Device:</b></label>
   <select id="device" name="device" onchange="getData()"></select>
   <br>
 </form></div>
-
 <br>
+<div id = "part_scores"></div>
 <div id = "description">
 Normative data are provided in z-score units, presenting the number of standard deviations from the mean represented by each raw score.<br>
 Where possible, all norms are coded such that higher (or more positive) z scores represent better performance whereas lower (or more negative) z scores represent poorer performance.<br>
 See below table for description of test-specific column headings.</div>
-
 </div>
-
 <br>
-
-<div id ="print"><input type="button" value="Print this page" onClick="window.print()"></div>
+<div id ="print"><input type="button" value="Print this page" onClick="window.print()"></div><div id ="show_all"><input type="button" value="Show/hide norms for all tests" onClick="showHideNorms()"></div>
 
 <br>
 <div id="main_table"></div>

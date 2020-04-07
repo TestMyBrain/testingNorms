@@ -8,11 +8,14 @@
 </head>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-	
+
 <script>
-var dropbox_link = 'https://dl.dropboxusercontent.com/s/sxgyj9n5s63oeec/combined_norms_testData.csv?raw=1';
+var dropbox_link = 'https://dl.dropboxusercontent.com/s/ydd2599189fh9wp/combined_norms_forNormSite.csv?raw=1';
+var regweights_link = 'https://dl.dropboxusercontent.com/s/hcm2cio7eylihfe/regWeights_testData.csv?raw=1';
 var norm_data = [];
 var norm_final = [];
+var reg_weights = [];
+var reg_weights_final = [];
 var nRow = [];
 var nCol = [];
 var age_column = [];
@@ -25,12 +28,149 @@ var part_string = [];
 var cols2show = [];
 var cols2showNames = [];
 var show_all = false;
+var ss = {	"test": [],
+			"raw": [],
+			"z": [],
+			};
+var rw = [];
+var rw_match = [];
+var rw_row = [];
 
+// Production steps of ECMA-262, Edition 6, 22.1.2.1 (to allow Array.from to work on IE)
+if (!Array.from) {
+  Array.from = (function () {
+    var toStr = Object.prototype.toString;
+    var isCallable = function (fn) {
+      return typeof fn === 'function' || toStr.call(fn) === '[object Function]';
+    };
+    var toInteger = function (value) {
+      var number = Number(value);
+      if (isNaN(number)) { return 0; }
+      if (number === 0 || !isFinite(number)) { return number; }
+      return (number > 0 ? 1 : -1) * Math.floor(Math.abs(number));
+    };
+    var maxSafeInteger = Math.pow(2, 53) - 1;
+    var toLength = function (value) {
+      var len = toInteger(value);
+      return Math.min(Math.max(len, 0), maxSafeInteger);
+    };
+
+    // The length property of the from method is 1.
+    return function from(arrayLike/*, mapFn, thisArg */) {
+      // 1. Let C be the this value.
+      var C = this;
+
+      // 2. Let items be ToObject(arrayLike).
+      var items = Object(arrayLike);
+
+      // 3. ReturnIfAbrupt(items).
+      if (arrayLike == null) {
+        throw new TypeError('Array.from requires an array-like object - not null or undefined');
+      }
+
+      // 4. If mapfn is undefined, then let mapping be false.
+      var mapFn = arguments.length > 1 ? arguments[1] : void undefined;
+      var T;
+      if (typeof mapFn !== 'undefined') {
+        // 5. else
+        // 5. a If IsCallable(mapfn) is false, throw a TypeError exception.
+        if (!isCallable(mapFn)) {
+          throw new TypeError('Array.from: when provided, the second argument must be a function');
+        }
+
+        // 5. b. If thisArg was supplied, let T be thisArg; else let T be undefined.
+        if (arguments.length > 2) {
+          T = arguments[2];
+        }
+      }
+
+      // 10. Let lenValue be Get(items, "length").
+      // 11. Let len be ToLength(lenValue).
+      var len = toLength(items.length);
+
+      // 13. If IsConstructor(C) is true, then
+      // 13. a. Let A be the result of calling the [[Construct]] internal method 
+      // of C with an argument list containing the single item len.
+      // 14. a. Else, Let A be ArrayCreate(len).
+      var A = isCallable(C) ? Object(new C(len)) : new Array(len);
+
+      // 16. Let k be 0.
+      var k = 0;
+      // 17. Repeat, while k < len… (also steps a - h)
+      var kValue;
+      while (k < len) {
+        kValue = items[k];
+        if (mapFn) {
+          A[k] = typeof T === 'undefined' ? mapFn(kValue, k) : mapFn.call(T, kValue, k);
+        } else {
+          A[k] = kValue;
+        }
+        k += 1;
+      }
+      // 18. Let putStatus be Put(A, "length", len, true).
+      A.length = len;
+      // 20. Return A.
+      return A;
+    };
+  }());
+}
 $(document).ready(function() {
+	getRegWeights()
+});
+
+function getRegWeights(){
+	$.get(regweights_link, function(data){
+        reg_weights = data;
+        
+        //determine number of rows in CSV file
+        var nRow_rw = -1;
+        var i = 0;
+		while(i >= 0) {
+     	  i = reg_weights.indexOf('\n', i+1);
+     	  nRow_rw++;
+		}
+		
+		tst = reg_weights.indexOf('\n');
+        if (tst == -1){
+			reg_weights = reg_weights.replace(/\r/g, ",");
+		} else {
+			reg_weights = reg_weights.replace(/\n/g, ",");
+		}
+		reg_weights = reg_weights.split(',');
+		
+		
+		//get rid of slashes that R puts into CSV (if necessary)
+		if (reg_weights[0].length > 0){
+			for (i = 0; i < reg_weights.length; i++){
+				reg_weights[i] = reg_weights[i].substr(1, reg_weights[i].length - 2);
+			}
+		}
+		
+		//split data into columns (rounding because off by 1 for some reason)
+		var nCol_rw = Math.round(reg_weights.length/nRow_rw);
+		
+		for (c = 0; c < nCol_rw; c++){
+			reg_weights_final[c] = [];
+		}
+		for (i = nCol_rw; i < reg_weights.length; i++){
+			reg_weights_final[i%nCol_rw].push(reg_weights[i]);
+		}
+		
+		for (i = 1; i < nCol_rw; i++){
+			rw[reg_weights[i]] = (reg_weights_final[i]);
+		}
+		
+		getDropboxData();
+	}).fail(function(d) {
+        console.log("error_rw");
+        getRegWeights();
+    });
+}
+
+function getDropboxData(){
 	$.get(dropbox_link, function(data){
         norm_data = data;
 
-        
         //determine number of rows in CSV file
         nRow = -1;
         var i = 0;
@@ -74,7 +214,7 @@ $(document).ready(function() {
 		}
 		
 		//get gender options (in order from csv)
-		gender_options = Array.from(new Set(norm_final[gender_column]))
+		gender_options = Array.from(unique(norm_final[gender_column]))
 		for (i = 0; i < gender_options.length; i++){
 			if (gender_options[i].length == 0){
 				gender_options.splice(i,1);
@@ -82,7 +222,7 @@ $(document).ready(function() {
 		}
 		
 		//get edu options (in order from csv)
-		edu_options = Array.from(new Set(norm_final[edu_column]))
+		edu_options = Array.from(unique(norm_final[edu_column]))
 		for (i = 0; i < edu_options.length; i++){
 			if (edu_options[i].length == 0){
 				edu_options.splice(i,1);
@@ -90,14 +230,14 @@ $(document).ready(function() {
 		}
 		
 		//get age options (in order from csv)
-		age_options = Array.from(new Set(norm_final[age_column]))
+		age_options = Array.from(unique(norm_final[age_column]))
 		for (i = 0; i < age_options.length; i++){
-			if (age_options[i].length == 0){
+			if (age_options[i].length == 0){norm
 				age_options.splice(i,1);
 			}
 		}
 		//get device options (in order from csv)
-		device_options = Array.from(new Set(norm_final[device_column]))
+		device_options = Array.from(unique(norm_final[device_column]))
 		for (i = 0; i < device_options.length; i++){
 			if (device_options[i].length == 0){
 				device_options.splice(i,1);
@@ -136,19 +276,22 @@ $(document).ready(function() {
      	  				a = part_string.length;
      	  			}
      	  			var test_name = part_string.substring(pos, i);
+     	  			ss.test.push(test_name)
      	  			cols2showNames.push(test_name)
-     	  			str = str + test_name + ' = ' + part_string.substring(i+1,a) + '<br>'
+     	  			ss.raw.push(part_string.substring(i+1,a));
+     	  			ss.z.push(0);
      	  			pos = a + 1;
      	  		}
 			}
-			$("#part_scores").html(str + '<br>');
 		} else {
 			$("#show_all").hide();
 		}
-		
 		getData();
-	});
-});
+	}).fail(function(d) {
+        console.log("error");
+        getDropboxData();
+    });
+}
 
 function getData(){
 	gender = frm.gender.value;
@@ -215,20 +358,140 @@ function getData(){
 	}
 	
 	//filter by age and gender
-	all_match = age_match.filter(value => -1 !== gender_match.indexOf(value));
+	//all_match = age_match.filter(value => -1 !== gender_match.indexOf(value));
+	all_match = age_match.filter(function(n) {
+    	return gender_match.indexOf(n) !== -1;
+	});
 	
 	//filter by device
-	all_match = all_match.filter(value => -1 !== device_match.indexOf(value));
+	//all_match = all_match.filter(value => -1 !== device_match.indexOf(value));
+	all_match = all_match.filter(function(n) {
+    	return device_match.indexOf(n) !== -1;
+	});
 	
 	//apply education filter if over age 12-20
 	if (!adolescent){
-		all_match = all_match.filter(value => -1 !== edu_match.indexOf(value));
+		//all_match = all_match.filter(value => -1 !== edu_match.indexOf(value));
+		all_match = all_match.filter(function(n) {
+    		return edu_match.indexOf(n) !== -1;
+		});
 	}
+	
+	//calculate z-scores
+	for (t = 0; t < ss.test.length; t++){
+		score = Number(ss.raw[t]);
+		//find which row we need
+		
+		//get age matches
+		if (adolescent){
+			var ag = 'adolescent';
+		} else {
+			var ag = 'adult';
+		}
+		var i = 0;
+		var ag_match = [];
+		while(i >= 0) {
+     		i = rw.group.indexOf(ag, i);
+     		if (i >= 0){
+     			ag_match.push(i);
+     			i++;
+     		}
+		}
+		//get test name matches
+		var i = 0;
+		var tn_match = [];
+		while(i >= 0) {
+     		i = rw.test.indexOf(ss.test[t], i);
+     		if (i >= 0){
+     			tn_match.push(i);
+     			i++;
+     		}
+		}
+		
+		rw_match = ag_match.filter(function(n) {
+    		return tn_match.indexOf(n) !== -1;
+		});
+		
+		//two options at this point
+		if (device == "unknown"){
+			//get regression weight row
+			if (rw.iPad[rw_match[0]].length == 0){
+				rw_row = rw_match[0];
+			} else {
+				rw_row = rw_match[1];
+			}
+			//assign edu_score depending on age group (adult/adolescent)
+			if (adolescent){
+				edu_score = 0;
+			} else {
+				edu_score = (edu_options.indexOf(edu)+1)* Number(rw.education[rw_row]);
+			}
+			dev_score = 0;
+		} else {
+			//get regression weight row
+			if (rw.iPad[rw_match[0]].length == 0){
+				rw_row = rw_match[1];
+			} else {
+				rw_row = rw_match[0];
+			}
+			//assign edu_score depending on age group (adult/adolescent)
+			if (adolescent){
+				edu_score = 0;
+			} else {
+				edu_score = (edu_options.indexOf(edu)+1)* Number(rw.education[rw_row]);
+			}
+			//assign device score depending on device selected
+			if (reg_weights.indexOf(device) == -1){
+				dev_score = 0;
+			} else {
+				dev_score = Number(rw[device][rw_row]);
+			}
+		}
+		//get gender score
+		if (gender == 'M'){
+			gender_score = Number(rw.gender_male[rw_row])
+		} else {
+			gender_score = 0;
+		}
+		//get age score
+		if (adolescent){
+			age_val = Number(age);
+		} else {
+			age_val = Number(age.substring(0,1))
+		}
+		//is higher score better or worse?
+		if (rw.flip[rw_row] == "TRUE"){
+			f = -1;
+		} else {
+			f = 1;
+		}
+		
+		predicted_score = Number(rw.yint[rw_row]) + gender_score + edu_score + dev_score + age_val*Number(rw.age1[rw_row]) + age_val*age_val*Number(rw.age2[rw_row]);
+		if (score < Number(rw.min[rw_row]) && rw.min[rw_row].length > 0){
+			score = Number(rw.min[rw_row]);
+		} else if (score > Number(rw.max[rw_row]) && rw.max[rw_row].length > 0){
+			score = Number(rw.max[rw_row]);
+		}
+		
+		z = f*(score - predicted_score) / Number(rw.reg_sd[rw_row])
+		ss.z[t] = Math.round(100*z)/100;
+	}
+	
 	makeTable();
 }
 
 function makeTable(){
+	if (part_string.length > 0){
+		//update scores
+		str = [];
+		for (i = 0; i < ss.test.length; i++){
+			str = str + ss.test[i] + ' = ' + ss.raw[i] + '; Z = ' + ss.z[i] + '<br>'
+		}
+		$("#part_scores").html('<b>Participant-specific scores (z-score is specific to characteristics specified by dropdown menus):</b><br>' + str + '<br>');
+	}
+
 	//create table
+	$("#instructions").html('Please select participant characteristics from the dropdown menus:')
 	
 	//pick what columns to show, if test-specific data in url
 	if (part_string.length > 0 && !show_all){
@@ -295,6 +558,15 @@ function showHideNorms(){
 	makeTable();
 }
 
+function unique(a) {
+    var temp = {};
+    for (var i = 0; i < a.length; i++)
+        temp[a[i]] = true;
+    var r = [];
+    for (var k in temp)
+        r.push(k);
+    return r;
+}
 </script>
 
 <style>
@@ -333,7 +605,7 @@ font-size: 14px
 
 <body>
 
-<div id = "instructions">Please select participant characteristics from the dropdown menus:</div>
+<div id = "instructions">Loading norm data, please wait...</div>
 <br>
 <div id = "dropdown">
 <div id = "form_div">

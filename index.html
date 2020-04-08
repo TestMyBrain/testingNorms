@@ -35,6 +35,7 @@ var ss = {	"test": [],
 var rw = [];
 var rw_match = [];
 var rw_row = [];
+var znote_text = 'Z-scores outside of the -4 to 4 range are extreme outliers and should be interpreted with caution. This could, for example, indicate a technical or user error during test administration.'
 
 // Production steps of ECMA-262, Edition 6, 22.1.2.1 (to allow Array.from to work on IE)
 if (!Array.from) {
@@ -481,14 +482,18 @@ function getData(){
 }
 
 function makeTable(){
+	$("#znote").html(znote_text);
 	if (part_string.length > 0){
 		//update scores
 		str = [];
+		$("#znote").css('color', 'black');
 		for (i = 0; i < ss.test.length; i++){
 			if (ss.z[i] < 4 && ss.z[i] > -4){
 				str = str + ss.test[i] + ' = ' + ss.raw[i] + '; Z = ' + ss.z[i] + '<br>'
 			} else {
-				str = str + ss.test[i] + ' = ' + ss.raw[i] + ';<font color="red"> Z = ' + ss.z[i] + '</font><br>'
+				str = str + ss.test[i] + ' = ' + ss.raw[i] + ';<font color="red"> Z = ' + ss.z[i] + '*</font><br>'
+				$("#znote").html('*'+znote_text);
+				$("#znote").css('color', 'red');
 			}
 		}
 		$("#part_scores").html('<b>Participant-specific scores (z-score is specific to characteristics specified by dropdown menus):</b><br>' + str + '<br>');
@@ -605,6 +610,10 @@ font-size: 14px
 #description {
 font-size: 14px
 }
+
+#znote {
+font-size: 14px
+}
 </style>
 
 <body>
@@ -632,7 +641,7 @@ font-size: 14px
 <div id = "description">
 Normative data are provided in z-score units, presenting the number of standard deviations from the mean represented by each raw score.<br>
 Where possible, all norms are coded such that higher (or more positive) z scores represent better performance whereas lower (or more negative) z scores represent poorer performance.<br>
-Z-scores outside of the -4 to 4 range are extreme outliers and should be interpreted with caution. This could, for example, indicate a technical or user error during test administration.<br>
+<div id = "znote"></div>
 See below table for description of test-specific column headings.</div>
 </div>
 <br>

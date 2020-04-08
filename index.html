@@ -413,69 +413,73 @@ function getData(){
     		return tn_match.indexOf(n) !== -1;
 		});
 		
-		//two options at this point
-		if (device == "unknown"){
-			//get regression weight row
-			if (rw.iPad[rw_match[0]].length == 0){
-				rw_row = rw_match[0];
-			} else {
-				rw_row = rw_match[1];
-			}
-			//assign edu_score depending on age group (adult/adolescent)
-			if (adolescent){
-				edu_score = 0;
-			} else {
-				edu_score = (edu_options.indexOf(edu)+1)* Number(rw.education[rw_row]);
-			}
-			dev_score = 0;
-		} else {
-			//get regression weight row
-			if (rw.iPad[rw_match[0]].length == 0){
-				rw_row = rw_match[1];
-			} else {
-				rw_row = rw_match[0];
-			}
-			//assign edu_score depending on age group (adult/adolescent)
-			if (adolescent){
-				edu_score = 0;
-			} else {
-				edu_score = (edu_options.indexOf(edu)+1)* Number(rw.education[rw_row]);
-			}
-			//assign device score depending on device selected
-			if (reg_weights.indexOf(device) == -1){
+		if (rw_match.length > 0){
+			//two options at this point
+			if (device == "unknown"){
+				//get regression weight row
+				if (rw.iPad[rw_match[0]].length == 0){
+					rw_row = rw_match[0];
+				} else {
+					rw_row = rw_match[1];
+				}
+				//assign edu_score depending on age group (adult/adolescent)
+				if (adolescent){
+					edu_score = 0;
+				} else {
+					edu_score = (edu_options.indexOf(edu)+1)* Number(rw.education[rw_row]);
+				}
 				dev_score = 0;
 			} else {
-				dev_score = Number(rw[device][rw_row]);
+				//get regression weight row
+				if (rw.iPad[rw_match[0]].length == 0){
+					rw_row = rw_match[1];
+				} else {
+					rw_row = rw_match[0];
+				}
+				//assign edu_score depending on age group (adult/adolescent)
+				if (adolescent){
+					edu_score = 0;
+				} else {
+					edu_score = (edu_options.indexOf(edu)+1)* Number(rw.education[rw_row]);
+				}
+				//assign device score depending on device selected
+				if (reg_weights.indexOf(device) == -1){
+					dev_score = 0;
+				} else {
+					dev_score = Number(rw[device][rw_row]);
+				}
 			}
-		}
-		//get gender score
-		if (gender == 'M'){
-			gender_score = Number(rw.gender_male[rw_row])
-		} else {
-			gender_score = 0;
-		}
-		//get age score
-		if (adolescent){
-			age_val = Number(age);
-		} else {
-			age_val = Number(age.substring(0,1))
-		}
-		//is higher score better or worse?
-		if (rw.flip[rw_row] == "TRUE"){
-			f = -1;
-		} else {
-			f = 1;
-		}
+			//get gender score
+			if (gender == 'M'){
+				gender_score = Number(rw.gender_male[rw_row])
+			} else {
+				gender_score = 0;
+			}
+			//get age score
+			if (adolescent){
+				age_val = Number(age);
+			} else {
+				age_val = Number(age.substring(0,1))
+			}
+			//is higher score better or worse?
+			if (rw.flip[rw_row] == "TRUE"){
+				f = -1;
+			} else {
+				f = 1;
+			}
 		
-		predicted_score = Number(rw.yint[rw_row]) + gender_score + edu_score + dev_score + age_val*Number(rw.age1[rw_row]) + age_val*age_val*Number(rw.age2[rw_row]);
-		if (score < Number(rw.min[rw_row]) && rw.min[rw_row].length > 0){
-			score = Number(rw.min[rw_row]);
-		} else if (score > Number(rw.max[rw_row]) && rw.max[rw_row].length > 0){
-			score = Number(rw.max[rw_row]);
-		}
+			predicted_score = Number(rw.yint[rw_row]) + gender_score + edu_score + dev_score + age_val*Number(rw.age1[rw_row]) + age_val*age_val*Number(rw.age2[rw_row]);
+			if (score < Number(rw.min[rw_row]) && rw.min[rw_row].length > 0){
+				score = Number(rw.min[rw_row]);
+			} else if (score > Number(rw.max[rw_row]) && rw.max[rw_row].length > 0){
+				score = Number(rw.max[rw_row]);
+			}
 		
-		z = f*(score - predicted_score) / Number(rw.reg_sd[rw_row])
-		ss.z[t] = Math.round(100*z)/100;
+			z = f*(score - predicted_score) / Number(rw.reg_sd[rw_row])
+			ss.z[t] = Math.round(100*z)/100;
+		} else {
+			ss.z[t] = 'NA'
+		}
 	}
 	
 	makeTable();

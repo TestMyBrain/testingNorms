@@ -485,7 +485,11 @@ function makeTable(){
 		//update scores
 		str = [];
 		for (i = 0; i < ss.test.length; i++){
-			str = str + ss.test[i] + ' = ' + ss.raw[i] + '; Z = ' + ss.z[i] + '<br>'
+			if (ss.z[i] < 4 && ss.z[i] > -4){
+				str = str + ss.test[i] + ' = ' + ss.raw[i] + '; Z = ' + ss.z[i] + '<br>'
+			} else {
+				str = str + ss.test[i] + ' = ' + ss.raw[i] + ';<font color="red"> Z = ' + ss.z[i] + '</font><br>'
+			}
 		}
 		$("#part_scores").html('<b>Participant-specific scores (z-score is specific to characteristics specified by dropdown menus):</b><br>' + str + '<br>');
 	}
@@ -628,6 +632,7 @@ font-size: 14px
 <div id = "description">
 Normative data are provided in z-score units, presenting the number of standard deviations from the mean represented by each raw score.<br>
 Where possible, all norms are coded such that higher (or more positive) z scores represent better performance whereas lower (or more negative) z scores represent poorer performance.<br>
+Z-scores outside of the -4 to 4 range are extreme outliers and should be interpreted with caution. This could, for example, indicate a technical or user error during test administration.<br>
 See below table for description of test-specific column headings.</div>
 </div>
 <br>

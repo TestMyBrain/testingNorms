@@ -10,8 +10,8 @@
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 
 <script>
-var dropbox_link = 'https://dl.dropboxusercontent.com/s/ydd2599189fh9wp/combined_norms_forNormSite.csv?raw=1';
-var regweights_link = 'https://dl.dropboxusercontent.com/s/hcm2cio7eylihfe/regWeights_testData.csv?raw=1';
+var norm_table_csv_link = 'https://raw.githubusercontent.com/TestMyBrain/testingNorms/master/combined_norms_testData.csv';
+var regweights_link = 'https://raw.githubusercontent.com/TestMyBrain/testingNorms/master/regWeights_testData.csv';
 var norm_data = [];
 var norm_final = [];
 var reg_weights = [];
@@ -160,15 +160,15 @@ function getRegWeights(){
 			rw[reg_weights[i]] = (reg_weights_final[i]);
 		}
 		
-		getDropboxData();
+		getNormData();
 	}).fail(function(d) {
         console.log("error_rw");
         getRegWeights();
     });
 }
 
-function getDropboxData(){
-	$.get(dropbox_link, function(data){
+function getNormData(){
+	$.get(norm_table_csv_link, function(data){
         norm_data = data;
 
         //determine number of rows in CSV file
@@ -289,7 +289,7 @@ function getDropboxData(){
 		getData();
 	}).fail(function(d) {
         console.log("error");
-        getDropboxData();
+        getNormData();
     });
 }
 
